@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Star Squad" />
+  <meta name="theme-color" content="#FFF4E6" />
+  <title>Star Squad ⭐</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif; background: #FFF4E6; overscroll-behavior: none; }
+    #root { min-height: 100vh; }
+    @keyframes confettiFly { 0% { transform: translate(0,0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
+    @keyframes mascotIdle { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+    @keyframes mascotCheer { 0% { transform: scale(1) rotate(0); } 30% { transform: scale(1.35) rotate(-15deg); } 60% { transform: scale(1.25) rotate(15deg); } 100% { transform: scale(1) rotate(0); } }
+    @keyframes bubblePop { 0% { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+    @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+    input, button { font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+
+
+// ============= INLINE SVG ICONS (replacing lucide-react) =============
+const _svg = (d) => ({ size = 24, color = 'currentColor', strokeWidth = 2.5 }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+);
+const Lock = _svg(<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>);
+const Home = _svg(<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>);
+const BookOpen = _svg(<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>);
+const ShoppingBag = _svg(<><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></>);
+const Plus = _svg(<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>);
+const X = _svg(<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>);
+const Check = _svg(<><polyline points="20 6 9 17 4 12"/></>);
+const ArrowLeft = _svg(<><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></>);
+const Star = _svg(<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></>);
+const Trophy = _svg(<><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></>);
+const Settings = _svg(<><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>);
+const Sparkles = _svg(<><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></>);
+const UserPlus = _svg(<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></>);
+
+// ============= COLORS & DESIGN TOKENS =============
+const C = {
+  bg: '#FFF4E6',
+  bgSoft: '#FFE8D6',
+  card: '#FFFFFF',
+  primary: '#FF6B8A',
+  primaryDark: '#E04E6D',
+  sun: '#FFD93D',
+  mint: '#95E1C1',
+  sky: '#6BCBEF',
+  lavender: '#C8A8E9',
+  orange: '#FFA552',
+  text: '#3A1F47',
+  textSoft: '#7A5D7A',
+  border: '#F5DAB4',
+};
+const KID_COLORS = ['#FF6B8A', '#6BCBEF', '#95E1C1', '#FFD93D', '#C8A8E9', '#FFA552'];
+const AVATARS = ['🦊', '🦁', '🐼', '🐨', '🐸', '🦄', '🐯', '🐻', '🐙', '🦉', '🐢', '🐧'];
+
+// ============= DEFAULT DATA =============
+const DEFAULT_STATE = {
+  kids: [
+    { id: 'k1', name: 'Maya', avatar: '🦊', color: '#FF6B8A', weeklyPoints: 0, lifetimePoints: 0, stickers: 0 },
+    { id: 'k2', name: 'Leo', avatar: '🦁', color: '#6BCBEF', weeklyPoints: 0, lifetimePoints: 0, stickers: 0 },
+  ],
+  tasks: [
+    { id: 't1', name: 'Get ready for school', icon: '☀️', type: 'daily', timeOfDay: 'morning', points: 10, bonus: 5 },
+    { id: 't2', name: 'Brush teeth (morning)', icon: '🪥', type: 'daily', timeOfDay: 'morning', points: 5, bonus: 5 },
+    { id: 't3', name: 'Put on pyjamas', icon: '🧸', type: 'daily', timeOfDay: 'evening', points: 5, bonus: 5 },
+    { id: 't4', name: 'Brush teeth (evening)', icon: '🪥', type: 'daily', timeOfDay: 'evening', points: 5, bonus: 5 },
+    { id: 't5', name: 'Ready for bed on time', icon: '🌙', type: 'daily', timeOfDay: 'evening', points: 10, bonus: 0 },
+    { id: 't6', name: 'Try a new food', icon: '🍽️', type: 'oneoff', points: 20, bonus: 0 },
+    { id: 't7', name: 'Start a new chug', icon: '🏃', type: 'oneoff', points: 50, bonus: 0 },
+    { id: 't8', name: 'Read a book this week', icon: '📚', type: 'weekly', points: 30, bonus: 0 },
+  ],
+  rewards: [
+    { id: 'r1', name: 'Ice cream', icon: '🍦', cost: 50 },
+    { id: 'r2', name: 'Candy', icon: '🍬', cost: 30 },
+    { id: 'r3', name: 'Extra 15 min screen time', icon: '📺', cost: 100 },
+    { id: 'r4', name: 'Stay up 15 min late', icon: '🌙', cost: 80 },
+    { id: 'r5', name: 'Pick family movie', icon: '🎬', cost: 60 },
+    { id: 'r6', name: 'Small toy', icon: '🧸', cost: 200 },
+    { id: 'r7', name: 'Sleepover with friend', icon: '🎉', cost: 500 },
+    { id: 'r8', name: 'Park trip', icon: '🏖️', cost: 300 },
+  ],
+  completions: {},     // keys: "kidId_taskId_YYYY-MM-DD" for daily, "kidId_taskId_YYYY-WW" for weekly, "kidId_taskId" for one-off
+  homeworkPages: {},   // keys: "kidId_YYYY-MM-DD" => number
+  redemptions: [],     // { id, kidId, rewardId, status: 'pending'|'approved'|'denied', date }
+  settings: { pin: '1234', soundOn: true },
+};
+
+// ============= ENCOURAGEMENT MESSAGES =============
+const CHEER_MSGS = [
+  "You crushed it!", "Amazing work!", "You're on fire! 🔥", "Superstar!", "Brain power!",
+  "You did it!", "So proud of you!", "Keep going, hero!", "Look at you go!", "Incredible!",
+  "Your brain just got stronger!", "Wow wow wow!", "That was awesome!", "High five! ✋", "You rock!"
+];
+const MILESTONE_5_MSGS = [
+  "🎖️ FIVE PAGES! You unlocked a golden badge!",
+  "⭐ 5 pages of pure genius! Badge unlocked!",
+  "🏅 Halfway to the big prize! Badge earned!",
+];
+const MILESTONE_10_MSGS = [
+  "👑 TEN PAGES! You are a homework CHAMPION!",
+  "🏆 10 PAGES! New sticker for your collection!",
+  "💎 You're a superstar! 10-page sticker unlocked!",
+];
+
+// ============= HELPERS =============
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const weekKey = () => {
+  const d = new Date();
+  const onejan = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${week}`;
+};
+const compKey = (kidId, task) => {
+  if (task.type === 'daily') return `${kidId}_${task.id}_${todayKey()}`;
+  if (task.type === 'weekly') return `${kidId}_${task.id}_${weekKey()}`;
+  return `${kidId}_${task.id}`;
+};
+const randomMsg = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+// ============= CONFETTI / PARTICLES =============
+function Confetti({ intensity = 'medium', trigger }) {
+  const [particles, setParticles] = useState([]);
+  useEffect(() => {
+    if (!trigger) return;
+    const count = intensity === 'huge' ? 60 : intensity === 'big' ? 35 : intensity === 'medium' ? 20 : 10;
+    const emojis = intensity === 'huge'
+      ? ['⭐', '✨', '🎉', '💫', '🌟', '💖', '👑', '🏆']
+      : intensity === 'big'
+      ? ['⭐', '✨', '🎉', '💫', '🌟', '🎖️']
+      : ['⭐', '✨', '🎉', '💫', '🌟'];
+    const newParticles = Array.from({ length: count }, (_, i) => ({
+      id: `${Date.now()}-${i}`,
+      emoji: emojis[Math.floor(Math.random() * emojis.length)],
+      x: (Math.random() - 0.5) * 400,
+      y: -Math.random() * 400 - 100,
+      rot: (Math.random() - 0.5) * 720,
+      delay: Math.random() * 0.2,
+      size: 1 + Math.random() * 1.2,
+    }));
+    setParticles(newParticles);
+    const t = setTimeout(() => setParticles([]), 1800);
+    return () => clearTimeout(t);
+  }, [trigger, intensity]);
+  return (
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
+      {particles.map(p => (
+        <div
+          key={p.id}
+          style={{
+            position: 'absolute',
+            fontSize: `${2 * p.size}rem`,
+            transform: `translate(0px, 0px)`,
+            animation: `confettiFly 1.5s ease-out ${p.delay}s forwards`,
+            ['--dx']: `${p.x}px`,
+            ['--dy']: `${p.y}px`,
+            ['--rot']: `${p.rot}deg`,
+          }}
+        >
+          {p.emoji}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============= MASCOT =============
+function Mascot({ cheering, message }) {
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        style={{
+          fontSize: '6rem',
+          display: 'inline-block',
+          animation: cheering ? 'mascotCheer 0.6s ease-in-out' : 'mascotIdle 2.5s ease-in-out infinite',
+          filter: 'drop-shadow(0 8px 0 rgba(0,0,0,0.08))',
+        }}
+      >
+        ⭐
+      </div>
+      {message && (
+        <div
+          style={{
+            background: C.card,
+            color: C.text,
+            padding: '14px 22px',
+            borderRadius: '24px',
+            marginTop: '-8px',
+            fontWeight: 800,
+            fontSize: '1.15rem',
+            boxShadow: `0 4px 0 ${C.border}`,
+            border: `3px solid ${C.sun}`,
+            animation: 'bubblePop 0.4s ease-out',
+            textAlign: 'center',
+            maxWidth: '280px',
+          }}
+        >
+          {message}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============= LAUNCH SCREEN =============
+function Launch({ kids, onPickKid, onParent }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: C.bg }}>
+      <div style={{ animation: 'bubblePop 0.5s ease-out' }}>
+        <h1 style={{
+          fontFamily: 'Fredoka, sans-serif',
+          fontSize: '2.75rem',
+          color: C.text,
+          textAlign: 'center',
+          fontWeight: 700,
+          marginBottom: '6px',
+          letterSpacing: '-0.5px',
+        }}>
+          Star Squad ⭐
+        </h1>
+        <p style={{ textAlign: 'center', color: C.textSoft, fontWeight: 700, marginBottom: '40px' }}>
+          Who's ready to shine today?
+        </p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-5 mb-12">
+        {kids.map(k => (
+          <button
+            key={k.id}
+            onClick={() => onPickKid(k.id)}
+            style={{
+              background: C.card,
+              border: `4px solid ${k.color}`,
+              borderRadius: '28px',
+              padding: '20px 16px',
+              width: '140px',
+              boxShadow: `0 6px 0 ${k.color}`,
+              cursor: 'pointer',
+              transition: 'transform 0.15s, box-shadow 0.15s',
+            }}
+            onMouseDown={e => { e.currentTarget.style.transform = 'translateY(4px)'; e.currentTarget.style.boxShadow = `0 2px 0 ${k.color}`; }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 6px 0 ${k.color}`; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 6px 0 ${k.color}`; }}
+          >
+            <div style={{ fontSize: '4.5rem', lineHeight: 1 }}>{k.avatar}</div>
+            <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: '1.3rem', color: C.text, marginTop: '8px' }}>
+              {k.name}
+            </div>
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={onParent}
+        style={{
+          background: 'transparent',
+          border: `2px dashed ${C.textSoft}`,
+          borderRadius: '999px',
+          padding: '10px 20px',
+          color: C.textSoft,
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          cursor: 'pointer',
+        }}
+      >
+        <Lock size={16} /> Parent mode
+      </button>
+    </div>
+  );
+}
+
+// ============= PARENT PIN =============
+function ParentPin({ correctPin, onSuccess, onBack }) {
+  const [pin, setPin] = useState('');
+  const [wrong, setWrong] = useState(false);
+  const tap = (n) => {
+    if (pin.length >= 4) return;
+    const next = pin + n;
+    setPin(next);
+    if (next.length === 4) {
+      setTimeout(() => {
+        if (next === correctPin) onSuccess();
+        else { setWrong(true); setTimeout(() => { setPin(''); setWrong(false); }, 700); }
+      }, 150);
+    }
+  };
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: C.bg }}>
+      <button onClick={onBack} style={{ position: 'absolute', top: 20, left: 20, background: 'transparent', border: 'none', cursor: 'pointer', color: C.textSoft }}>
+        <ArrowLeft size={28} />
+      </button>
+      <h2 style={{ fontFamily: 'Fredoka, sans-serif', fontSize: '1.75rem', color: C.text, marginBottom: '6px' }}>Parent PIN</h2>
+      <p style={{ color: C.textSoft, marginBottom: '8px', fontWeight: 600 }}>Default: 1234</p>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '32px', animation: wrong ? 'shake 0.4s' : 'none' }}>
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} style={{
+            width: '18px', height: '18px', borderRadius: '50%',
+            background: pin.length > i ? (wrong ? '#E04E6D' : C.primary) : 'transparent',
+            border: `3px solid ${wrong ? '#E04E6D' : C.text}`,
+          }} />
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 72px)', gap: '12px' }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'del'].map((n, i) => (
+          <button
+            key={i}
+            onClick={() => n === 'del' ? setPin(pin.slice(0, -1)) : n !== null && tap(String(n))}
+            disabled={n === null}
+            style={{
+              height: '72px', borderRadius: '20px', border: 'none', cursor: n === null ? 'default' : 'pointer',
+              background: n === null ? 'transparent' : C.card,
+              boxShadow: n === null ? 'none' : `0 4px 0 ${C.border}`,
+              fontSize: '1.5rem', fontWeight: 700, color: C.text, fontFamily: 'Fredoka, sans-serif',
+            }}
+          >
+            {n === 'del' ? '⌫' : n}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============= KID DASHBOARD =============
+function KidDashboard({ kid, state, onComplete, onHomework, onStore, onBack }) {
+  const [pointsBump, setPointsBump] = useState(false);
+  const prevPoints = useRef(kid.weeklyPoints);
+  useEffect(() => {
+    if (kid.weeklyPoints > prevPoints.current) {
+      setPointsBump(true);
+      setTimeout(() => setPointsBump(false), 600);
+    }
+    prevPoints.current = kid.weeklyPoints;
+  }, [kid.weeklyPoints]);
+
+  const morning = state.tasks.filter(t => t.type === 'daily' && t.timeOfDay === 'morning');
+  const evening = state.tasks.filter(t => t.type === 'daily' && t.timeOfDay === 'evening');
+  const challenges = state.tasks.filter(t => t.type === 'oneoff' || t.type === 'weekly');
+  const isDone = (t) => state.completions[compKey(kid.id, t)];
+
+  return (
+    <div className="min-h-screen p-5 pb-20" style={{ background: C.bg }}>
+      <div className="flex items-center justify-between mb-5">
+        <button onClick={onBack} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
+          <ArrowLeft size={28} />
+        </button>
+        <div style={{ fontSize: '2rem' }}>{kid.avatar}</div>
+      </div>
+
+      {/* Points banner */}
+      <div
+        style={{
+          background: `linear-gradient(135deg, ${kid.color} 0%, ${C.sun} 100%)`,
+          borderRadius: '28px',
+          padding: '24px',
+          textAlign: 'center',
+          color: '#fff',
+          boxShadow: `0 6px 0 rgba(0,0,0,0.1)`,
+          marginBottom: '24px',
+        }}
+      >
+        <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 600, fontSize: '1rem', opacity: 0.9 }}>
+          Hi {kid.name}! This week:
+        </div>
+        <div style={{
+          fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: '4rem', lineHeight: 1,
+          transform: pointsBump ? 'scale(1.15)' : 'scale(1)',
+          transition: 'transform 0.3s cubic-bezier(.34,1.56,.64,1)',
+        }}>
+          {kid.weeklyPoints} ⭐
+        </div>
+        <div style={{ fontWeight: 700, opacity: 0.9, fontSize: '0.9rem', marginTop: '4px' }}>
+          {kid.stickers > 0 ? `🏅 ${kid.stickers} stickers` : 'Earn your first sticker!'}
+        </div>
+      </div>
+
+      {/* Big action buttons */}
+      <div className="flex gap-3 mb-6">
+        <button
+          onClick={onHomework}
+          style={{
+            flex: 1, background: C.primary, color: '#fff', border: 'none',
+            borderRadius: '24px', padding: '20px 12px', boxShadow: `0 5px 0 ${C.primaryDark}`,
+            fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: '1.15rem',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer',
+          }}
+        >
+          <BookOpen size={32} />
+          Homework
+        </button>
+        <button
+          onClick={onStore}
+          style={{
+            flex: 1, background: C.mint, color: C.text, border: 'none',
+            borderRadius: '24px', padding: '20px 12px', boxShadow: `0 5px 0 #6BC8A0`,
+            fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: '1.15rem',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', cursor: 'pointer',
+          }}
+        >
+          <ShoppingBag size={32} />
+          Store
+        </button>
+      </div>
+
+      {/* Task sections */}
+      <TaskSection title="☀️ Morning" tasks={morning} isDone={isDone} onComplete={onComplete} />
+      <TaskSection title="🌙 Evening" tasks={evening} isDone={isDone} onComplete={onComplete} />
+      <TaskSection title="🎯 Challenges" tasks={challenges} isDone={isDone} onComplete={onComplete} isChallenge />
+    </div>
+  );
+}
+
+function TaskSection({ title, tasks, isDone, onComplete, isChallenge }) {
+  if (tasks.length === 0) return null;
+  return (
+    <div className="mb-5">
+      <h3 style={{ fontFamily: 'Fredoka, sans-serif', fontSize: '1.25rem', color: C.text, fontWeight: 700, marginBottom: '10px', marginLeft: '4px' }}>
+        {title}
+      </h3>
+      <div className="flex flex-col gap-3">
+        {tasks.map(t => (
+          <TaskCard key={t.id} task={t} done={isDone(t)} onComplete={onComplete} isChallenge={isChallenge} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TaskCard({ task, done, onComplete, isChallenge }) {
+  return (
+    <button
+      onClick={() => !done && onComplete(task)}
+      disabled={done}
+      style={{
+        background: done ? C.bgSoft : C.card,
+        border: isChallenge ? `3px solid ${C.sun}` : `3px solid ${C.border}`,
+        borderRadius: '20px',
+        padding: '14px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '14px',
+        cursor: done ? 'default' : 'pointer',
+        opacity: done ? 0.6 : 1,
+        boxShadow: done ? 'none' : `0 3px 0 ${C.border}`,
+        textAlign: 'left',
+        position: 'relative',
+        transition: 'opacity 0.3s',
+      }}
+    >
+      {isChallenge && !done && (
+        <div style={{
+          position: 'absolute', top: -10, right: 14, background: C.sun, color: C.text,
+          fontSize: '0.7rem', fontWeight: 800, padding: '3px 10px', borderRadius: '999px',
+          fontFamily: 'Fredoka, sans-serif',
+        }}>
+          ✨ CHALLENGE
+        </div>
+      )}
+      <div style={{ fontSize: '2rem' }}>{task.icon}</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: '1.05rem', color: C.text, textDecoration: done ? 'line-through' : 'none' }}>
+          {task.name}
+        </div>
+        <div style={{ fontSize: '0.85rem', color: C.textSoft, fontWeight: 600 }}>
+          +{task.points} pts {task.bonus > 0 && `(+${task.bonus} bonus!)`}
+        </div>
+      </div>
+      <div style={{
+        width: '40px', height: '40px', borderRadius: '50%',
+        background: done ? C.mint : '#F0EEEE',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {done ? <Check size={22} color="#fff" strokeWidth={3} /> : <div style={{ width: 20, height: 20, border: `3px solid #D4D0CB`, borderRadius: '50%' }} />}
+      </div>
+    </button>
+  );
+}
+
+// ============= HOMEWORK MODE =============
+function HomeworkMode({ kid, pages, onPageDone, onBack }) {
+  const [cheering, setCheering] = useState(false);
+  const [message, setMessage] = useState("Let's do this! I believe in you! 💪");
+  const [intensity, setIntensity] = useState(null);
+
+  const handleDone = () => {
+    const newPages = pages + 1;
+    let msg, inten;
+    if (newPages === 10 || (newPages > 10 && newPages % 10 === 0)) {
+      msg = randomMsg(MILESTONE_10_MSGS);
+      inten = 'huge';
+    } else if (newPages === 5 || (newPages > 5 && newPages % 5 === 0)) {
+      msg = randomMsg(MILESTONE_5_MSGS);
+      inten = 'big';
+    } else {
+      msg = randomMsg(CHEER_MSGS);
+      inten = 'medium';
+    }
+    setMessage(msg);
+    setCheering(true);
+    setIntensity(Date.now() + '_' + inten);
+    onPageDone(newPages);
+    setTimeout(() => setCheering(false), 700);
+    setTimeout(() => {
+      if (newPages % 5 !== 0) setMessage("Next page! You've got this! 💫");
+    }, 2500);
+  };
+
+  const intensityType = intensity ? intensity.split('_')[1] : 'medium';
+
+  return (
+    <div className="min-h-screen p-5 flex flex-col" style={{ background: `linear-gradient(180deg, ${C.bgSoft} 0%, ${C.bg} 100%)` }}>
+      <Confetti intensity={intensityType} trigger={intensity} />
+
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={onBack} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
+          <ArrowLeft size={28} />
+        </button>
+        <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, color: C.text, fontSize: '1.1rem' }}>
+          Homework time
+        </div>
+        <div style={{ width: 28 }} />
+      </div>
+
+      {/* Mascot */}
+      <div className="flex-1 flex flex-col items-center justify-center py-6">
+        <Mascot cheering={cheering} message={message} />
+
+        {/* Pages counter */}
+        <div style={{ marginTop: '32px', textAlign: 'center' }}>
+          <div style={{ color: C.textSoft, fontWeight: 700, fontSize: '0.9rem' }}>Pages done today</div>
+          <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: '5rem', fontWeight: 700, color: C.text, lineHeight: 1 }}>
+            {pages}
+          </div>
+          {/* Milestone progress */}
+          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '12px' }}>
+            {[...Array(10)].map((_, i) => (
+              <div key={i} style={{
+                width: '22px', height: '22px', borderRadius: '50%',
+                background: i < pages ? (i === 9 ? C.primary : i === 4 ? C.sun : C.mint) : '#EEDCC0',
+                border: `2px solid ${i < pages ? 'transparent' : '#E5D2B3'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '0.75rem',
+                transform: i < pages ? 'scale(1)' : 'scale(0.85)',
+                transition: 'all 0.3s',
+              }}>
+                {i === 4 && i < pages && '🏅'}
+                {i === 9 && i < pages && '👑'}
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: '8px', color: C.textSoft, fontSize: '0.8rem', fontWeight: 700 }}>
+            {pages < 5 ? `🏅 Badge at 5 pages` : pages < 10 ? `👑 Sticker at 10 pages` : '🎉 Champion!'}
+          </div>
+        </div>
+      </div>
+
+      {/* Big done button */}
+      <button
+        onClick={handleDone}
+        style={{
+          background: C.primary, color: '#fff', border: 'none',
+          borderRadius: '32px', padding: '24px', width: '100%',
+          boxShadow: `0 6px 0 ${C.primaryDark}`,
+          fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: '1.6rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', cursor: 'pointer',
+        }}
+        onMouseDown={e => { e.currentTarget.style.transform = 'translateY(4px)'; e.currentTarget.style.boxShadow = `0 2px 0 ${C.primaryDark}`; }}
+        onMouseUp={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 6px 0 ${C.primaryDark}`; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 6px 0 ${C.primaryDark}`; }}
+      >
+        <Sparkles size={28} /> Page done!
+      </button>
+    </div>
+  );
+}
+
+// ============= REWARD STORE =============
+function RewardStore({ kid, state, onRedeem, onBack }) {
+  const [justRequested, setJustRequested] = useState(null);
+  return (
+    <div className="min-h-screen p-5" style={{ background: C.bg }}>
+      <div className="flex items-center justify-between mb-5">
+        <button onClick={onBack} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
+          <ArrowLeft size={28} />
+        </button>
+        <h2 style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, color: C.text, fontSize: '1.5rem', margin: 0 }}>
+          🛒 Store
+        </h2>
+        <div style={{ background: kid.color, color: '#fff', padding: '6px 14px', borderRadius: '999px', fontWeight: 800, fontFamily: 'Fredoka, sans-serif' }}>
+          {kid.weeklyPoints} ⭐
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+        {state.rewards.map(r => {
+          const affordable = kid.weeklyPoints >= r.cost;
+          const requested = justRequested === r.id;
+          return (
+            <button
+              key={r.id}
+              onClick={() => { if (affordable && !requested) { onRedeem(r); setJustRequested(r.id); setTimeout(() => setJustRequested(null), 2500); } }}
+              disabled={!affordable || requested}
+              style={{
+                background: requested ? C.mint : C.card,
+                border: `3px solid ${affordable ? C.sun : C.border}`,
+                borderRadius: '20px',
+                padding: '18px 10px',
+                boxShadow: affordable ? `0 4px 0 ${C.border}` : 'none',
+                opacity: affordable ? 1 : 0.5,
+                cursor: affordable ? 'pointer' : 'default',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
+              }}
+            >
+              <div style={{ fontSize: '2.5rem' }}>{r.icon}</div>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, color: C.text, fontSize: '0.95rem', textAlign: 'center', lineHeight: 1.2 }}>
+                {r.name}
+              </div>
+              <div style={{
+                background: affordable ? C.sun : '#E5E5E5', color: C.text,
+                padding: '3px 10px', borderRadius: '999px', fontWeight: 800, fontSize: '0.85rem',
+              }}>
+                {requested ? '✓ Requested!' : `${r.cost} ⭐`}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <p style={{ textAlign: 'center', color: C.textSoft, marginTop: '24px', fontWeight: 600, fontSize: '0.9rem' }}>
+        Parents approve your requests ✨
+      </p>
+    </div>
+  );
+}
+
+// ============= PARENT VIEW =============
+function ParentView({ state, setState, onBack }) {
+  const [tab, setTab] = useState('approvals');
+  const pendingCount = state.redemptions.filter(r => r.status === 'pending').length;
+
+  return (
+    <div className="min-h-screen" style={{ background: C.bg }}>
+      <div style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button onClick={onBack} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.text }}>
+          <ArrowLeft size={28} />
+        </button>
+        <h2 style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, color: C.text, fontSize: '1.4rem', margin: 0 }}>
+          Parent mode
+        </h2>
+        <div style={{ width: 28 }} />
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '4px', padding: '16px 12px 12px', overflowX: 'auto' }}>
+        {[
+          { id: 'approvals', label: `Approvals${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
+          { id: 'kids', label: 'Kids' },
+          { id: 'tasks', label: 'Tasks' },
+          { id: 'rewards', label: 'Rewards' },
+        ].map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              background: tab === t.id ? C.primary : C.card,
+              color: tab === t.id ? '#fff' : C.text,
+              border: 'none',
+              padding: '10px 16px',
+              borderRadius: '999px',
+              fontFamily: 'Fredoka, sans-serif',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ padding: '8px 20px 40px' }}>
+        {tab === 'approvals' && <ApprovalsTab state={state} setState={setState} />}
+        {tab === 'kids' && <KidsTab state={state} setState={setState} />}
+        {tab === 'tasks' && <TasksTab state={state} setState={setState} />}
+        {tab === 'rewards' && <RewardsTab state={state} setState={setState} />}
+      </div>
+    </div>
+  );
+}
+
+function ApprovalsTab({ state, setState }) {
+  const pending = state.redemptions.filter(r => r.status === 'pending');
+  const recent = state.redemptions.filter(r => r.status !== 'pending').slice(-5).reverse();
+  const decide = (id, status) => setState(s => ({ ...s, redemptions: s.redemptions.map(r => r.id === id ? { ...r, status } : r) }));
+
+  return (
+    <div>
+      <h3 style={{ fontFamily: 'Fredoka, sans-serif', color: C.text, marginBottom: '10px' }}>Pending requests</h3>
+      {pending.length === 0 && <p style={{ color: C.textSoft, fontWeight: 600 }}>Nothing pending. 🎉</p>}
+      {pending.map(r => {
+        const kid = state.kids.find(k => k.id === r.kidId);
+        const rew = state.rewards.find(x => x.id === r.rewardId);
+        if (!kid || !rew) return null;
+        return (
+          <div key={r.id} style={{
+            background: C.card, borderRadius: '18px', padding: '14px', marginBottom: '10px',
+            display: 'flex', alignItems: 'center', gap: '12px', boxShadow: `0 3px 0 ${C.border}`,
+          }}>
+            <div style={{ fontSize: '2rem' }}>{rew.icon}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, color: C.text }}>{rew.name}</div>
+              <div style={{ fontSize: '0.85rem', color: C.textSoft, fontWeight: 600 }}>{kid.avatar} {kid.name} · {rew.cost} pts</div>
+            </div>
+            <button onClick={() => decide(r.id, 'approved')} style={{ background: C.mint, border: 'none', borderRadius: '999px', padding: '8px 14px', fontWeight: 800, color: C.text, cursor: 'pointer' }}>✓</button>
+            <button onClick={() => decide(r.id, 'denied')} style={{ background: '#FFCBCB', border: 'none', borderRadius: '999px', padding: '8px 14px', fontWeight: 800, color: C.text, cursor: 'pointer' }}>✗</button>
+          </div>
+        );
+      })}
+
+      {recent.length > 0 && (
+        <>
+          <h3 style={{ fontFamily: 'Fredoka, sans-serif', color: C.text, marginTop: '24px', marginBottom: '10px' }}>Recent</h3>
+          {recent.map(r => {
+            const kid = state.kids.find(k => k.id === r.kidId);
+            const rew = state.rewards.find(x => x.id === r.rewardId);
+            if (!kid || !rew) return null;
+            return (
+              <div key={r.id} style={{ padding: '10px 14px', color: C.textSoft, fontWeight: 600, fontSize: '0.9rem' }}>
+                {r.status === 'approved' ? '✅' : '❌'} {kid.name} — {rew.name}
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
+
+function KidsTab({ state, setState }) {
+  const [mode, setMode] = useState({ type: 'list' }); // {type:'list'} | {type:'add'} | {type:'edit', id}
+  const [name, setName] = useState('');
+  const [avatar, setAvatar] = useState(AVATARS[0]);
+  const [color, setColor] = useState(KID_COLORS[2]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const startAdd = () => { setName(''); setAvatar(AVATARS[0]); setColor(KID_COLORS[2]); setConfirmDelete(false); setMode({ type: 'add' }); };
+  const startEdit = (k) => { setName(k.name); setAvatar(k.avatar); setColor(k.color); setConfirmDelete(false); setMode({ type: 'edit', id: k.id }); };
+  const cancel = () => { setMode({ type: 'list' }); setConfirmDelete(false); };
+
+  const save = () => {
+    if (!name.trim()) return;
+    if (mode.type === 'add') {
+      setState(s => ({ ...s, kids: [...s.kids, { id: uid(), name: name.trim(), avatar, color, weeklyPoints: 0, lifetimePoints: 0, stickers: 0 }] }));
+    } else if (mode.type === 'edit') {
+      setState(s => ({ ...s, kids: s.kids.map(k => k.id === mode.id ? { ...k, name: name.trim(), avatar, color } : k) }));
+    }
+    cancel();
+  };
+
+  const deleteKid = () => {
+    setState(s => ({ ...s, kids: s.kids.filter(k => k.id !== mode.id) }));
+    cancel();
+  };
+
+  const Form = ({ isEdit }) => (
+    <div style={{ background: C.card, borderRadius: '18px', padding: '16px', marginBottom: '10px', boxShadow: `0 3px 0 ${C.border}` }}>
+      <div style={{ marginBottom: '8px', fontWeight: 700, color: C.text, fontSize: '0.85rem' }}>Name</div>
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Name" style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '12px', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+      <div style={{ marginBottom: '8px', fontWeight: 700, color: C.text, fontSize: '0.85rem' }}>Avatar</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+        {AVATARS.map(a => (
+          <button key={a} onClick={() => setAvatar(a)} style={{ fontSize: '1.75rem', padding: '4px 8px', borderRadius: '12px', border: avatar === a ? `3px solid ${C.primary}` : '3px solid transparent', background: avatar === a ? C.bgSoft : 'transparent', cursor: 'pointer' }}>{a}</button>
+        ))}
+      </div>
+      <div style={{ marginBottom: '8px', fontWeight: 700, color: C.text, fontSize: '0.85rem' }}>Color</div>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+        {KID_COLORS.map(c => (
+          <button key={c} onClick={() => setColor(c)} style={{ width: '36px', height: '36px', borderRadius: '50%', background: c, border: color === c ? `3px solid ${C.text}` : '3px solid transparent', cursor: 'pointer' }} />
+        ))}
+      </div>
+      {isEdit && confirmDelete ? (
+        <div style={{ background: '#FFE5E5', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+          <div style={{ fontWeight: 700, color: C.text, marginBottom: '10px', fontSize: '0.9rem' }}>Remove this kid? Points will be lost.</div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={deleteKid} style={{ flex: 1, background: '#E04E6D', color: '#fff', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}>Yes, remove</button>
+            <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, background: '#EEE', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Keep</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={save} style={{ flex: 1, background: C.primary, color: '#fff', border: 'none', padding: '12px', borderRadius: '14px', fontWeight: 800, cursor: 'pointer' }}>{isEdit ? 'Save' : 'Add kid'}</button>
+          {isEdit && <button onClick={() => setConfirmDelete(true)} style={{ background: '#FFE5E5', color: '#E04E6D', border: 'none', padding: '12px 14px', borderRadius: '14px', fontWeight: 800, cursor: 'pointer' }}>Delete</button>}
+          <button onClick={cancel} style={{ background: '#EEE', border: 'none', padding: '12px 14px', borderRadius: '14px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div>
+      {state.kids.map(k => mode.type === 'edit' && mode.id === k.id ? (
+        <Form key={k.id} isEdit />
+      ) : (
+        <button
+          key={k.id}
+          onClick={() => startEdit(k)}
+          style={{ background: C.card, borderRadius: '18px', padding: '14px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '12px', borderLeft: `6px solid ${k.color}`, width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', boxShadow: `0 3px 0 ${C.border}` }}
+        >
+          <div style={{ fontSize: '2.25rem' }}>{k.avatar}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, color: C.text, fontSize: '1.1rem' }}>{k.name}</div>
+            <div style={{ color: C.textSoft, fontWeight: 600, fontSize: '0.85rem' }}>{k.weeklyPoints} this week · {k.lifetimePoints} total · {k.stickers} 🏅</div>
+          </div>
+          <div style={{ color: C.textSoft, fontSize: '0.75rem', fontWeight: 700 }}>tap to edit</div>
+        </button>
+      ))}
+      {mode.type === 'add' ? (
+        <Form isEdit={false} />
+      ) : (
+        <button onClick={startAdd} style={{ width: '100%', background: 'transparent', border: `3px dashed ${C.textSoft}`, borderRadius: '18px', padding: '16px', color: C.text, fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          <UserPlus size={20} /> Add kid
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TasksTab({ state, setState }) {
+  const [mode, setMode] = useState({ type: 'list' }); // list | add | edit
+  const [name, setName] = useState('');
+  const [icon, setIcon] = useState('✨');
+  const [type, setType] = useState('daily');
+  const [timeOfDay, setTimeOfDay] = useState('morning');
+  const [points, setPoints] = useState(10);
+  const [bonus, setBonus] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const startAdd = () => { setName(''); setIcon('✨'); setType('daily'); setTimeOfDay('morning'); setPoints(10); setBonus(0); setConfirmDelete(false); setMode({ type: 'add' }); };
+  const startEdit = (t) => { setName(t.name); setIcon(t.icon); setType(t.type); setTimeOfDay(t.timeOfDay || 'morning'); setPoints(t.points); setBonus(t.bonus || 0); setConfirmDelete(false); setMode({ type: 'edit', id: t.id }); };
+  const cancel = () => { setMode({ type: 'list' }); setConfirmDelete(false); };
+
+  const save = () => {
+    if (!name.trim()) return;
+    const data = { name: name.trim(), icon, type, points: Number(points), bonus: Number(bonus) };
+    if (type === 'daily') data.timeOfDay = timeOfDay;
+    if (mode.type === 'add') {
+      setState(s => ({ ...s, tasks: [...s.tasks, { id: uid(), ...data }] }));
+    } else if (mode.type === 'edit') {
+      setState(s => ({ ...s, tasks: s.tasks.map(t => t.id === mode.id ? { ...t, ...data, timeOfDay: type === 'daily' ? timeOfDay : undefined } : t) }));
+    }
+    cancel();
+  };
+
+  const deleteTask = () => {
+    setState(s => ({ ...s, tasks: s.tasks.filter(t => t.id !== mode.id) }));
+    cancel();
+  };
+
+  const Form = ({ isEdit }) => (
+    <div style={{ background: C.card, borderRadius: '18px', padding: '16px', marginBottom: '10px', boxShadow: `0 3px 0 ${C.border}` }}>
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Task name" style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '10px', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+      <input value={icon} onChange={e => setIcon(e.target.value)} placeholder="Icon (emoji)" style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '10px', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+        {['daily', 'weekly', 'oneoff'].map(tt => (
+          <button key={tt} onClick={() => setType(tt)} style={{ flex: 1, padding: '8px', borderRadius: '10px', border: 'none', background: type === tt ? C.primary : C.bgSoft, color: type === tt ? '#fff' : C.text, fontWeight: 700, cursor: 'pointer', textTransform: 'capitalize' }}>
+            {tt === 'oneoff' ? 'one-off' : tt}
+          </button>
+        ))}
+      </div>
+      {type === 'daily' && (
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+          {['morning', 'evening'].map(td => (
+            <button key={td} onClick={() => setTimeOfDay(td)} style={{ flex: 1, padding: '8px', borderRadius: '10px', border: 'none', background: timeOfDay === td ? C.sun : C.bgSoft, color: C.text, fontWeight: 700, cursor: 'pointer', textTransform: 'capitalize' }}>
+              {td}
+            </button>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '0.8rem', color: C.textSoft, fontWeight: 700, marginBottom: '4px' }}>Points</div>
+          <input type="number" value={points} onChange={e => setPoints(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: `2px solid ${C.border}`, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '0.8rem', color: C.textSoft, fontWeight: 700, marginBottom: '4px' }}>Bonus</div>
+          <input type="number" value={bonus} onChange={e => setBonus(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '10px', border: `2px solid ${C.border}`, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+        </div>
+      </div>
+      {isEdit && confirmDelete ? (
+        <div style={{ background: '#FFE5E5', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+          <div style={{ fontWeight: 700, color: C.text, marginBottom: '10px', fontSize: '0.9rem' }}>Remove this task?</div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={deleteTask} style={{ flex: 1, background: '#E04E6D', color: '#fff', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}>Yes, remove</button>
+            <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, background: '#EEE', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Keep</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={save} style={{ flex: 1, background: C.primary, color: '#fff', border: 'none', padding: '12px', borderRadius: '14px', fontWeight: 800, cursor: 'pointer' }}>{isEdit ? 'Save' : 'Add task'}</button>
+          {isEdit && <button onClick={() => setConfirmDelete(true)} style={{ background: '#FFE5E5', color: '#E04E6D', border: 'none', padding: '12px 14px', borderRadius: '14px', fontWeight: 800, cursor: 'pointer' }}>Delete</button>}
+          <button onClick={cancel} style={{ background: '#EEE', border: 'none', padding: '12px 14px', borderRadius: '14px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+        </div>
+      )}
+    </div>
+  );
+
+  const groups = [
+    { label: '☀️ Morning routines', items: state.tasks.filter(t => t.type === 'daily' && t.timeOfDay === 'morning') },
+    { label: '🌙 Evening routines', items: state.tasks.filter(t => t.type === 'daily' && t.timeOfDay === 'evening') },
+    { label: '🎯 Challenges', items: state.tasks.filter(t => t.type === 'oneoff' || t.type === 'weekly') },
+  ];
+
+  return (
+    <div>
+      {groups.map(g => (
+        <div key={g.label} style={{ marginBottom: '16px' }}>
+          <h3 style={{ fontFamily: 'Fredoka, sans-serif', color: C.text, marginBottom: '8px', fontSize: '1.05rem' }}>{g.label}</h3>
+          {g.items.map(t => mode.type === 'edit' && mode.id === t.id ? (
+            <Form key={t.id} isEdit />
+          ) : (
+            <button
+              key={t.id}
+              onClick={() => startEdit(t)}
+              style={{ background: C.card, borderRadius: '14px', padding: '10px 14px', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', boxShadow: `0 2px 0 ${C.border}` }}
+            >
+              <div style={{ fontSize: '1.5rem' }}>{t.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: C.text, fontSize: '0.95rem' }}>{t.name}</div>
+                <div style={{ color: C.textSoft, fontSize: '0.8rem', fontWeight: 600 }}>
+                  {t.points} pts{t.bonus > 0 ? ` +${t.bonus} bonus` : ''} · {t.type}
+                </div>
+              </div>
+              <div style={{ color: C.textSoft, fontSize: '0.7rem', fontWeight: 700 }}>tap to edit</div>
+            </button>
+          ))}
+        </div>
+      ))}
+      {mode.type === 'add' ? (
+        <Form isEdit={false} />
+      ) : (
+        <button onClick={startAdd} style={{ width: '100%', background: 'transparent', border: `3px dashed ${C.textSoft}`, borderRadius: '18px', padding: '16px', color: C.text, fontFamily: 'Fredoka, sans-serif', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          <Plus size={20} /> Add task
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RewardsTab({ state, setState }) {
+  const [mode, setMode] = useState({ type: 'list' }); // list | add | edit
+  const [name, setName] = useState('');
+  const [icon, setIcon] = useState('🎁');
+  const [cost, setCost] = useState(50);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const startAdd = () => { setName(''); setIcon('🎁'); setCost(50); setConfirmDelete(false); setMode({ type: 'add' }); };
+  const startEdit = (r) => { setName(r.name); setIcon(r.icon); setCost(r.cost); setConfirmDelete(false); setMode({ type: 'edit', id: r.id }); };
+  const cancel = () => { setMode({ type: 'list' }); setConfirmDelete(false); };
+
+  const save = () => {
+    if (!name.trim()) return;
+    if (mode.type === 'add') {
+      setState(s => ({ ...s, rewards: [...s.rewards, { id: uid(), name: name.trim(), icon, cost: Number(cost) }] }));
+    } else if (mode.type === 'edit') {
+      setState(s => ({ ...s, rewards: s.rewards.map(r => r.id === mode.id ? { ...r, name: name.trim(), icon, cost: Number(cost) } : r) }));
+    }
+    cancel();
+  };
+
+  const deleteReward = () => {
+    setState(s => ({ ...s, rewards: s.rewards.filter(r => r.id !== mode.id) }));
+    cancel();
+  };
+
+  const Form = ({ isEdit }) => (
+    <div style={{ background: C.card, borderRadius: '18px', padding: '16px', marginBottom: '12px', boxShadow: `0 3px 0 ${C.border}` }}>
+      <input value={name} onChange={e => setName(e.target.value)} placeholder="Reward name" style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '10px', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+        <input value={icon} onChange={e => setIcon(e.target.value)} placeholder="Icon" style={{ flex: 1, padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+        <input type="number" value={cost} onChange={e => setCost(e.target.value)} placeholder="Cost" style={{ flex: 1, padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+      </div>
+      {isEdit && confirmDelete ? (
+        <div style={{ background: '#FFE5E5', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+          <div style={{ fontWeight: 700, color: C.text, marginBottom: '10px', fontSize: '0.9rem' }}>Remove this reward?</div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={deleteReward} style={{ flex: 1, background: '#E04E6D', color: '#fff', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}>Yes, remove</button>
+            <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, background: '#EEE', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Keep</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={save} style={{ flex: 1, background: C.primary, color: '#fff', border: 'none', padding: '12px', borderRadius: '14px', fontWeight: 800, cursor: 'pointer' }}>{isEdit ? 'Save' : 'Add reward'}</button>
+          {isEdit && <button onClick={() => setConfirmDelete(true)} style={{ background: '#FFE5E5', color: '#E04E6D', border: 'none', padding: '12px 14px', borderRadius: '14px', fontWeight: 800, cursor: 'pointer' }}>Delete</button>}
+          <button onClick={cancel} style={{ background: '#EEE', border: 'none', padding: '12px 14px', borderRadius: '14px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div>
+      {mode.type === 'edit' && <Form isEdit />}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '12px' }}>
+        {state.rewards.map(r => mode.type === 'edit' && mode.id === r.id ? null : (
+          <button
+            key={r.id}
+            onClick={() => startEdit(r)}
+            style={{ background: C.card, borderRadius: '14px', padding: '12px', textAlign: 'center', border: 'none', cursor: 'pointer', boxShadow: `0 2px 0 ${C.border}` }}
+          >
+            <div style={{ fontSize: '2rem' }}>{r.icon}</div>
+            <div style={{ fontWeight: 700, color: C.text, fontSize: '0.9rem' }}>{r.name}</div>
+            <div style={{ color: C.textSoft, fontSize: '0.8rem', fontWeight: 700 }}>{r.cost} ⭐</div>
+          </button>
+        ))}
+      </div>
+      {mode.type === 'add' ? (
+        <Form isEdit={false} />
+      ) : (
+        <button onClick={startAdd} style={{ width: '100%', background: 'transparent', border: `3px dashed ${C.textSoft}`, borderRadius: '18px', padding: '16px', color: C.text, fontFamily: 'Fredoka, sans-serif', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+          <Plus size={20} /> Add reward
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ============= TOP-LEVEL APP =============
+function App() {
+  const [state, setState] = useState(DEFAULT_STATE);
+  const [loaded, setLoaded] = useState(false);
+  const [screen, setScreen] = useState('launch'); // launch, kid, parentPin, parent
+  const [kidScreen, setKidScreen] = useState('dashboard'); // dashboard, homework, store
+  const [currentKidId, setCurrentKidId] = useState(null);
+  const [confettiKey, setConfettiKey] = useState(null);
+
+  // Load Google Fonts once
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap';
+    document.head.appendChild(link);
+
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes confettiFly { 0% { transform: translate(0,0) rotate(0); opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; } }
+      @keyframes mascotIdle { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+      @keyframes mascotCheer { 0% { transform: scale(1) rotate(0); } 30% { transform: scale(1.35) rotate(-15deg); } 60% { transform: scale(1.25) rotate(15deg); } 100% { transform: scale(1) rotate(0); } }
+      @keyframes bubblePop { 0% { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+      @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+      body, button, input { font-family: 'Nunito', -apple-system, sans-serif; }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(link); document.head.removeChild(style); };
+  }, []);
+
+  // Load state from storage
+  useEffect(() => {
+    try {
+      const r = localStorage.getItem('starsquad_v1');
+      if (r) setState(JSON.parse(r));
+    } catch (e) { /* no saved state */ }
+    setLoaded(true);
+  }, []);
+
+  // Save state on changes
+  useEffect(() => {
+    if (!loaded) return;
+    try { localStorage.setItem('starsquad_v1', JSON.stringify(state)); } catch (e) { /* ignore */ }
+  }, [state, loaded]);
+
+  const currentKid = state.kids.find(k => k.id === currentKidId);
+  const homeworkPages = currentKid ? (state.homeworkPages[`${currentKidId}_${todayKey()}`] || 0) : 0;
+
+  const completeTask = (task) => {
+    if (!currentKid) return;
+    const key = compKey(currentKid.id, task);
+    if (state.completions[key]) return;
+    const earned = task.points + (task.bonus || 0); // prototype: always grant bonus
+    setState(s => ({
+      ...s,
+      completions: { ...s.completions, [key]: true },
+      kids: s.kids.map(k => k.id === currentKid.id ? { ...k, weeklyPoints: k.weeklyPoints + earned, lifetimePoints: k.lifetimePoints + earned } : k),
+    }));
+    setConfettiKey(Date.now() + '_medium');
+  };
+
+  const completeHomeworkPage = (newPages) => {
+    if (!currentKid) return;
+    const pointsPerPage = 5;
+    let bonusStickers = 0;
+    if (newPages === 10 || (newPages > 10 && newPages % 10 === 0)) bonusStickers = 1;
+    setState(s => ({
+      ...s,
+      homeworkPages: { ...s.homeworkPages, [`${currentKid.id}_${todayKey()}`]: newPages },
+      kids: s.kids.map(k => k.id === currentKid.id ? {
+        ...k,
+        weeklyPoints: k.weeklyPoints + pointsPerPage,
+        lifetimePoints: k.lifetimePoints + pointsPerPage,
+        stickers: k.stickers + bonusStickers,
+      } : k),
+    }));
+  };
+
+  const redeem = (reward) => {
+    if (!currentKid) return;
+    if (currentKid.weeklyPoints < reward.cost) return;
+    setState(s => ({
+      ...s,
+      kids: s.kids.map(k => k.id === currentKid.id ? { ...k, weeklyPoints: k.weeklyPoints - reward.cost } : k),
+      redemptions: [...s.redemptions, { id: uid(), kidId: currentKid.id, rewardId: reward.id, status: 'pending', date: todayKey() }],
+    }));
+  };
+
+  if (!loaded) {
+    return <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg, color: C.textSoft, fontWeight: 700 }}>Loading…</div>;
+  }
+
+  return (
+    <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: C.bg, position: 'relative' }}>
+      <Confetti intensity={confettiKey?.split('_')[1] || 'medium'} trigger={confettiKey} />
+
+      {screen === 'launch' && (
+        <Launch
+          kids={state.kids}
+          onPickKid={id => { setCurrentKidId(id); setKidScreen('dashboard'); setScreen('kid'); }}
+          onParent={() => setScreen('parentPin')}
+        />
+      )}
+
+      {screen === 'parentPin' && (
+        <ParentPin
+          correctPin={state.settings.pin}
+          onSuccess={() => setScreen('parent')}
+          onBack={() => setScreen('launch')}
+        />
+      )}
+
+      {screen === 'parent' && (
+        <ParentView state={state} setState={setState} onBack={() => setScreen('launch')} />
+      )}
+
+      {screen === 'kid' && currentKid && kidScreen === 'dashboard' && (
+        <KidDashboard
+          kid={currentKid}
+          state={state}
+          onComplete={completeTask}
+          onHomework={() => setKidScreen('homework')}
+          onStore={() => setKidScreen('store')}
+          onBack={() => setScreen('launch')}
+        />
+      )}
+
+      {screen === 'kid' && currentKid && kidScreen === 'homework' && (
+        <HomeworkMode
+          kid={currentKid}
+          pages={homeworkPages}
+          onPageDone={completeHomeworkPage}
+          onBack={() => setKidScreen('dashboard')}
+        />
+      )}
+
+      {screen === 'kid' && currentKid && kidScreen === 'store' && (
+        <RewardStore
+          kid={currentKid}
+          state={state}
+          onRedeem={redeem}
+          onBack={() => setKidScreen('dashboard')}
+        />
+      )}
+    </div>
+  );
+}
+
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
