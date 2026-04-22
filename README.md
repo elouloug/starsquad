@@ -1,0 +1,2 @@
+# starsquad
+Kids motivation app
