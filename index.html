@@ -100,20 +100,26 @@ const KID_COLORS = ['#FF6B8A', '#6BCBEF', '#95E1C1', '#FFD93D', '#C8A8E9', '#FFA
 const AVATARS = ['🦊', '🦁', '🐼', '🐨', '🐸', '🦄', '🐯', '🐻', '🐙', '🦉', '🐢', '🐧'];
 
 // ============= DEFAULT DATA =============
+const DEFAULT_SECTIONS = [
+  { id: 'sec_morning',    name: 'Morning',    icon: '☀️', order: 0 },
+  { id: 'sec_evening',    name: 'Evening',    icon: '🌙', order: 1 },
+  { id: 'sec_challenges', name: 'Challenges', icon: '🎯', order: 2, isChallenge: true },
+];
+
 const DEFAULT_STATE = {
   kids: [
-    { id: 'k1', name: 'Maya', avatar: '🦊', color: '#FF6B8A', weeklyPoints: 0, lifetimePoints: 0, stickers: 0 },
-    { id: 'k2', name: 'Leo', avatar: '🦁', color: '#6BCBEF', weeklyPoints: 0, lifetimePoints: 0, stickers: 0 },
+    { id: 'k1', name: 'Maya', avatar: '🦊', color: '#FF6B8A', weeklyPoints: 0, lifetimePoints: 0, stickers: 0, sections: JSON.parse(JSON.stringify(DEFAULT_SECTIONS)) },
+    { id: 'k2', name: 'Leo',  avatar: '🦁', color: '#6BCBEF', weeklyPoints: 0, lifetimePoints: 0, stickers: 0, sections: JSON.parse(JSON.stringify(DEFAULT_SECTIONS)) },
   ],
   tasks: [
-    { id: 't1', name: 'Get ready for school', icon: '☀️', type: 'daily', timeOfDay: 'morning', points: 10, bonus: 5 },
-    { id: 't2', name: 'Brush teeth (morning)', icon: '🪥', type: 'daily', timeOfDay: 'morning', points: 5, bonus: 5 },
-    { id: 't3', name: 'Put on pyjamas', icon: '🧸', type: 'daily', timeOfDay: 'evening', points: 5, bonus: 5 },
-    { id: 't4', name: 'Brush teeth (evening)', icon: '🪥', type: 'daily', timeOfDay: 'evening', points: 5, bonus: 5 },
-    { id: 't5', name: 'Ready for bed on time', icon: '🌙', type: 'daily', timeOfDay: 'evening', points: 10, bonus: 0 },
-    { id: 't6', name: 'Try a new food', icon: '🍽️', type: 'oneoff', points: 20, bonus: 0 },
-    { id: 't7', name: 'Start a new chug', icon: '🏃', type: 'oneoff', points: 50, bonus: 0 },
-    { id: 't8', name: 'Read a book this week', icon: '📚', type: 'weekly', points: 30, bonus: 0 },
+    { id: 't1', name: 'Get ready for school',   icon: '☀️', type: 'daily',  sectionName: 'Morning',    points: 10, bonus: 5, kidIds: ['k1', 'k2'] },
+    { id: 't2', name: 'Brush teeth (morning)',  icon: '🪥', type: 'daily',  sectionName: 'Morning',    points: 5,  bonus: 5, kidIds: ['k1', 'k2'] },
+    { id: 't3', name: 'Put on pyjamas',         icon: '🧸', type: 'daily',  sectionName: 'Evening',    points: 5,  bonus: 5, kidIds: ['k1', 'k2'] },
+    { id: 't4', name: 'Brush teeth (evening)',  icon: '🪥', type: 'daily',  sectionName: 'Evening',    points: 5,  bonus: 5, kidIds: ['k1', 'k2'] },
+    { id: 't5', name: 'Ready for bed on time',  icon: '🌙', type: 'daily',  sectionName: 'Evening',    points: 10, bonus: 0, kidIds: ['k1', 'k2'] },
+    { id: 't6', name: 'Try a new food',         icon: '🍽️', type: 'oneoff', sectionName: 'Challenges', points: 20, bonus: 0, kidIds: ['k1', 'k2'] },
+    { id: 't7', name: 'Start a new chug',       icon: '🏃', type: 'oneoff', sectionName: 'Challenges', points: 50, bonus: 0, kidIds: ['k1', 'k2'] },
+    { id: 't8', name: 'Read a book this week',  icon: '📚', type: 'weekly', sectionName: 'Challenges', points: 30, bonus: 0, kidIds: ['k1', 'k2'] },
   ],
   rewards: [
     { id: 'r1', name: 'Ice cream', icon: '🍦', cost: 50 },
@@ -125,11 +131,44 @@ const DEFAULT_STATE = {
     { id: 'r7', name: 'Sleepover with friend', icon: '🎉', cost: 500 },
     { id: 'r8', name: 'Park trip', icon: '🏖️', cost: 300 },
   ],
-  completions: {},     // keys: "kidId_taskId_YYYY-MM-DD" for daily, "kidId_taskId_YYYY-WW" for weekly, "kidId_taskId" for one-off
-  homeworkPages: {},   // keys: "kidId_YYYY-MM-DD" => number
-  redemptions: [],     // { id, kidId, rewardId, status: 'pending'|'approved'|'denied', date }
+  completions: {},
+  homeworkPages: {},
+  redemptions: [],
   settings: { pin: '1234', soundOn: true },
 };
+
+// ============= MIGRATION =============
+// Upgrade older saved states to the new sections/kidIds model in-place.
+function migrateState(s) {
+  if (!s) return s;
+  const kidIds = (s.kids || []).map(k => k.id);
+  // Ensure each kid has a sections array with the three defaults at minimum
+  s.kids = (s.kids || []).map(k => {
+    if (!k.sections || !k.sections.length) {
+      k.sections = JSON.parse(JSON.stringify(DEFAULT_SECTIONS));
+    }
+    return k;
+  });
+  // Migrate tasks: timeOfDay -> sectionName; no kidIds -> all kids
+  s.tasks = (s.tasks || []).map(t => {
+    if (!t.sectionName) {
+      if (t.type === 'daily') t.sectionName = t.timeOfDay === 'evening' ? 'Evening' : 'Morning';
+      else t.sectionName = 'Challenges';
+    }
+    if (!t.kidIds) t.kidIds = kidIds.slice();
+    return t;
+  });
+  // Ensure every kid has all sectionNames referenced by their tasks
+  s.kids.forEach(k => {
+    const kidTaskSections = new Set(s.tasks.filter(t => (t.kidIds || []).includes(k.id)).map(t => t.sectionName));
+    kidTaskSections.forEach(secName => {
+      if (!k.sections.find(sec => sec.name === secName)) {
+        k.sections.push({ id: 'sec_' + uid(), name: secName, icon: '✨', order: k.sections.length });
+      }
+    });
+  });
+  return s;
+}
 
 // ============= ENCOURAGEMENT MESSAGES =============
 const CHEER_MSGS = [
@@ -419,10 +458,9 @@ function KidDashboard({ kid, state, onComplete, onHomework, onStore, onBack }) {
     prevPoints.current = kid.weeklyPoints;
   }, [kid.weeklyPoints]);
 
-  const morning = state.tasks.filter(t => t.type === 'daily' && t.timeOfDay === 'morning');
-  const evening = state.tasks.filter(t => t.type === 'daily' && t.timeOfDay === 'evening');
-  const challenges = state.tasks.filter(t => t.type === 'oneoff' || t.type === 'weekly');
+  const kidSections = (kid.sections || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
   const isDone = (t) => state.completions[compKey(kid.id, t)];
+  const tasksForSection = (secName) => state.tasks.filter(t => (t.kidIds || []).includes(kid.id) && t.sectionName === secName);
 
   return (
     <div className="min-h-screen p-5 pb-20" style={{ background: C.bg }}>
@@ -489,9 +527,16 @@ function KidDashboard({ kid, state, onComplete, onHomework, onStore, onBack }) {
       </div>
 
       {/* Task sections */}
-      <TaskSection title="☀️ Morning" tasks={morning} isDone={isDone} onComplete={onComplete} />
-      <TaskSection title="🌙 Evening" tasks={evening} isDone={isDone} onComplete={onComplete} />
-      <TaskSection title="🎯 Challenges" tasks={challenges} isDone={isDone} onComplete={onComplete} isChallenge />
+      {kidSections.map(sec => (
+        <TaskSection
+          key={sec.id}
+          title={`${sec.icon || '✨'} ${sec.name}`}
+          tasks={tasksForSection(sec.name)}
+          isDone={isDone}
+          onComplete={onComplete}
+          isChallenge={!!sec.isChallenge}
+        />
+      ))}
     </div>
   );
 }
@@ -741,6 +786,7 @@ function ParentView({ state, setState, onBack, onSignOut, userEmail }) {
           { id: 'approvals', label: `Approvals${pendingCount > 0 ? ` (${pendingCount})` : ''}` },
           { id: 'kids', label: 'Kids' },
           { id: 'tasks', label: 'Tasks' },
+          { id: 'sections', label: 'Sections' },
           { id: 'rewards', label: 'Rewards' },
           { id: 'settings', label: 'Settings' },
         ].map(t => (
@@ -769,6 +815,7 @@ function ParentView({ state, setState, onBack, onSignOut, userEmail }) {
         {tab === 'approvals' && <ApprovalsTab state={state} setState={setState} />}
         {tab === 'kids' && <KidsTab state={state} setState={setState} />}
         {tab === 'tasks' && <TasksTab state={state} setState={setState} />}
+        {tab === 'sections' && <SectionsTab state={state} setState={setState} />}
         {tab === 'rewards' && <RewardsTab state={state} setState={setState} />}
         {tab === 'settings' && <SettingsTab state={state} setState={setState} onSignOut={onSignOut} userEmail={userEmail} />}
       </div>
@@ -838,7 +885,7 @@ function KidsTab({ state, setState }) {
   const save = () => {
     if (!name.trim()) return;
     if (mode.type === 'add') {
-      setState(s => ({ ...s, kids: [...s.kids, { id: uid(), name: name.trim(), avatar, color, weeklyPoints: 0, lifetimePoints: 0, stickers: 0 }] }));
+      setState(s => ({ ...s, kids: [...s.kids, { id: uid(), name: name.trim(), avatar, color, weeklyPoints: 0, lifetimePoints: 0, stickers: 0, sections: JSON.parse(JSON.stringify(DEFAULT_SECTIONS)) }] }));
     } else if (mode.type === 'edit') {
       setState(s => ({ ...s, kids: s.kids.map(k => k.id === mode.id ? { ...k, name: name.trim(), avatar, color } : k) }));
     }
@@ -914,28 +961,60 @@ function KidsTab({ state, setState }) {
 }
 
 function TasksTab({ state, setState }) {
-  const [mode, setMode] = useState({ type: 'list' }); // list | add | edit
+  const [mode, setMode] = useState({ type: 'list' });
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('✨');
   const [type, setType] = useState('daily');
-  const [timeOfDay, setTimeOfDay] = useState('morning');
+  const [sectionName, setSectionName] = useState('Morning');
   const [points, setPoints] = useState(10);
   const [bonus, setBonus] = useState(0);
+  const [kidIds, setKidIds] = useState(state.kids.map(k => k.id));
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const startAdd = () => { setName(''); setIcon('✨'); setType('daily'); setTimeOfDay('morning'); setPoints(10); setBonus(0); setConfirmDelete(false); setMode({ type: 'add' }); };
-  const startEdit = (t) => { setName(t.name); setIcon(t.icon); setType(t.type); setTimeOfDay(t.timeOfDay || 'morning'); setPoints(t.points); setBonus(t.bonus || 0); setConfirmDelete(false); setMode({ type: 'edit', id: t.id }); };
+  // Union of every section name used by any kid — so parents can pick any existing section
+  const allSectionNames = Array.from(new Set(
+    state.kids.flatMap(k => (k.sections || []).map(s => s.name))
+  ));
+  if (allSectionNames.length === 0) allSectionNames.push('Morning', 'Evening', 'Challenges');
+
+  const startAdd = () => {
+    setName(''); setIcon('✨'); setType('daily');
+    setSectionName(allSectionNames[0] || 'Morning');
+    setPoints(10); setBonus(0);
+    setKidIds(state.kids.map(k => k.id));
+    setConfirmDelete(false);
+    setMode({ type: 'add' });
+  };
+  const startEdit = (t) => {
+    setName(t.name); setIcon(t.icon); setType(t.type);
+    setSectionName(t.sectionName || 'Morning');
+    setPoints(t.points); setBonus(t.bonus || 0);
+    setKidIds((t.kidIds || []).slice());
+    setConfirmDelete(false);
+    setMode({ type: 'edit', id: t.id });
+  };
   const cancel = () => { setMode({ type: 'list' }); setConfirmDelete(false); };
 
   const save = () => {
-    if (!name.trim()) return;
-    const data = { name: name.trim(), icon, type, points: Number(points), bonus: Number(bonus) };
-    if (type === 'daily') data.timeOfDay = timeOfDay;
-    if (mode.type === 'add') {
-      setState(s => ({ ...s, tasks: [...s.tasks, { id: uid(), ...data }] }));
-    } else if (mode.type === 'edit') {
-      setState(s => ({ ...s, tasks: s.tasks.map(t => t.id === mode.id ? { ...t, ...data, timeOfDay: type === 'daily' ? timeOfDay : undefined } : t) }));
-    }
+    if (!name.trim() || !kidIds.length) return;
+    const data = {
+      name: name.trim(), icon, type,
+      sectionName,
+      points: Number(points), bonus: Number(bonus),
+      kidIds: kidIds.slice(),
+    };
+    setState(s => {
+      // Ensure every assigned kid has this section (auto-create if missing)
+      const kids = s.kids.map(k => {
+        if (!kidIds.includes(k.id)) return k;
+        if ((k.sections || []).find(sec => sec.name === sectionName)) return k;
+        return { ...k, sections: [...(k.sections || []), { id: 'sec_' + uid(), name: sectionName, icon: '✨', order: (k.sections || []).length }] };
+      });
+      let tasks;
+      if (mode.type === 'add') tasks = [...s.tasks, { id: uid(), ...data }];
+      else tasks = s.tasks.map(t => t.id === mode.id ? { ...t, ...data } : t);
+      return { ...s, kids, tasks };
+    });
     cancel();
   };
 
@@ -944,26 +1023,42 @@ function TasksTab({ state, setState }) {
     cancel();
   };
 
+  const toggleKid = (id) => {
+    setKidIds(curr => curr.includes(id) ? curr.filter(x => x !== id) : [...curr, id]);
+  };
+
   const renderForm = (isEdit) => (
     <div style={{ background: C.card, borderRadius: '18px', padding: '16px', marginBottom: '10px', boxShadow: `0 3px 0 ${C.border}` }}>
       <input value={name} onChange={e => setName(e.target.value)} placeholder="Task name" style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '10px', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-      <input value={icon} onChange={e => setIcon(e.target.value)} placeholder="Icon (emoji)" style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '10px', fontFamily: 'inherit', boxSizing: 'border-box' }} />
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+      <input value={icon} onChange={e => setIcon(e.target.value)} placeholder="Icon (emoji)" style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '12px', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+
+      <div style={{ fontSize: '0.8rem', color: C.textSoft, fontWeight: 700, marginBottom: '6px' }}>For which kids?</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
+        {state.kids.map(k => {
+          const on = kidIds.includes(k.id);
+          return (
+            <button key={k.id} onClick={() => toggleKid(k.id)} style={{ padding: '6px 12px', borderRadius: '999px', border: 'none', background: on ? k.color : C.bgSoft, color: on ? '#fff' : C.text, fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {on && <Check size={14} color="#fff" strokeWidth={3} />} {k.avatar} {k.name}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ fontSize: '0.8rem', color: C.textSoft, fontWeight: 700, marginBottom: '6px' }}>Type</div>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
         {['daily', 'weekly', 'oneoff'].map(tt => (
           <button key={tt} onClick={() => setType(tt)} style={{ flex: 1, padding: '8px', borderRadius: '10px', border: 'none', background: type === tt ? C.primary : C.bgSoft, color: type === tt ? '#fff' : C.text, fontWeight: 700, cursor: 'pointer', textTransform: 'capitalize' }}>
             {tt === 'oneoff' ? 'one-off' : tt}
           </button>
         ))}
       </div>
-      {type === 'daily' && (
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-          {['morning', 'evening'].map(td => (
-            <button key={td} onClick={() => setTimeOfDay(td)} style={{ flex: 1, padding: '8px', borderRadius: '10px', border: 'none', background: timeOfDay === td ? C.sun : C.bgSoft, color: C.text, fontWeight: 700, cursor: 'pointer', textTransform: 'capitalize' }}>
-              {td}
-            </button>
-          ))}
-        </div>
-      )}
+
+      <div style={{ fontSize: '0.8rem', color: C.textSoft, fontWeight: 700, marginBottom: '6px' }}>Section</div>
+      <select value={sectionName} onChange={e => setSectionName(e.target.value)} style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '12px', fontFamily: 'inherit', boxSizing: 'border-box', background: C.card, color: C.text }}>
+        {allSectionNames.map(n => <option key={n} value={n}>{n}</option>)}
+      </select>
+      <p style={{ fontSize: '0.75rem', color: C.textSoft, marginTop: '-6px', marginBottom: '12px', fontWeight: 600 }}>Tip: add or rename sections in the Sections tab.</p>
+
       <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: '0.8rem', color: C.textSoft, fontWeight: 700, marginBottom: '4px' }}>Points</div>
@@ -992,11 +1087,19 @@ function TasksTab({ state, setState }) {
     </div>
   );
 
-  const groups = [
-    { label: '☀️ Morning routines', items: state.tasks.filter(t => t.type === 'daily' && t.timeOfDay === 'morning') },
-    { label: '🌙 Evening routines', items: state.tasks.filter(t => t.type === 'daily' && t.timeOfDay === 'evening') },
-    { label: '🎯 Challenges', items: state.tasks.filter(t => t.type === 'oneoff' || t.type === 'weekly') },
-  ];
+  // Group tasks by section name — show a group for every section used by any kid
+  const groups = allSectionNames.map(sn => ({
+    label: sn,
+    items: state.tasks.filter(t => t.sectionName === sn),
+  })).filter(g => g.items.length > 0);
+
+  const kidSummary = (task) => {
+    const names = (task.kidIds || []).map(id => {
+      const k = state.kids.find(x => x.id === id);
+      return k ? k.avatar : '';
+    }).filter(Boolean).join(' ');
+    return names || '—';
+  };
 
   return (
     <div>
@@ -1015,7 +1118,7 @@ function TasksTab({ state, setState }) {
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, color: C.text, fontSize: '0.95rem' }}>{t.name}</div>
                 <div style={{ color: C.textSoft, fontSize: '0.8rem', fontWeight: 600 }}>
-                  {t.points} pts{t.bonus > 0 ? ` +${t.bonus} bonus` : ''} · {t.type}
+                  {t.points} pts{t.bonus > 0 ? ` +${t.bonus} bonus` : ''} · {t.type} · {kidSummary(t)}
                 </div>
               </div>
               <div style={{ color: C.textSoft, fontSize: '0.7rem', fontWeight: 700 }}>tap to edit</div>
@@ -1028,6 +1131,143 @@ function TasksTab({ state, setState }) {
       ) : (
         <button onClick={startAdd} style={{ width: '100%', background: 'transparent', border: `3px dashed ${C.textSoft}`, borderRadius: '18px', padding: '16px', color: C.text, fontFamily: 'Fredoka, sans-serif', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
           <Plus size={20} /> Add task
+        </button>
+      )}
+    </div>
+  );
+}
+
+function SectionsTab({ state, setState }) {
+  const [selectedKidId, setSelectedKidId] = useState(state.kids[0]?.id || null);
+  const [mode, setMode] = useState({ type: 'list' }); // list | add | edit
+  const [secName, setSecName] = useState('');
+  const [secIcon, setSecIcon] = useState('✨');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const kid = state.kids.find(k => k.id === selectedKidId);
+  if (!kid) return <p style={{ color: C.textSoft, fontWeight: 600 }}>Add a kid first in the Kids tab.</p>;
+  const sections = (kid.sections || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  const startAdd = () => { setSecName(''); setSecIcon('✨'); setConfirmDelete(false); setMode({ type: 'add' }); };
+  const startEdit = (sec) => { setSecName(sec.name); setSecIcon(sec.icon || '✨'); setConfirmDelete(false); setMode({ type: 'edit', id: sec.id }); };
+  const cancel = () => { setMode({ type: 'list' }); setConfirmDelete(false); };
+
+  const saveSection = () => {
+    if (!secName.trim()) return;
+    const trimmed = secName.trim();
+    setState(s => {
+      const kids = s.kids.map(k => {
+        if (k.id !== selectedKidId) return k;
+        let sections = k.sections || [];
+        if (mode.type === 'add') {
+          // Prevent duplicate names on the same kid
+          if (sections.find(sec => sec.name.toLowerCase() === trimmed.toLowerCase())) return k;
+          sections = [...sections, { id: 'sec_' + uid(), name: trimmed, icon: secIcon, order: sections.length }];
+        } else if (mode.type === 'edit') {
+          const oldSection = sections.find(sec => sec.id === mode.id);
+          const oldName = oldSection?.name;
+          sections = sections.map(sec => sec.id === mode.id ? { ...sec, name: trimmed, icon: secIcon } : sec);
+          // If the name changed, also rename it in every task that was assigned to this kid
+          if (oldName && oldName !== trimmed) {
+            // Handle task rename in a separate pass
+            return { ...k, sections, __renamedFrom: oldName, __renamedTo: trimmed };
+          }
+        }
+        return { ...k, sections };
+      });
+      let tasks = s.tasks;
+      // If a rename happened, propagate to tasks that apply to this kid
+      const renamer = kids.find(k => k.__renamedFrom);
+      if (renamer) {
+        tasks = tasks.map(t => {
+          if (!(t.kidIds || []).includes(renamer.id)) return t;
+          if (t.sectionName !== renamer.__renamedFrom) return t;
+          return { ...t, sectionName: renamer.__renamedTo };
+        });
+        // Clean up the markers
+        kids.forEach(k => { delete k.__renamedFrom; delete k.__renamedTo; });
+      }
+      return { ...s, kids, tasks };
+    });
+    cancel();
+  };
+
+  const deleteSection = () => {
+    const sec = sections.find(x => x.id === mode.id);
+    if (!sec) return;
+    setState(s => {
+      // Remove this section from this kid only
+      const kids = s.kids.map(k => k.id === selectedKidId ? { ...k, sections: (k.sections || []).filter(x => x.id !== mode.id) } : k);
+      // For tasks assigned to this kid whose section is the one being deleted: unassign this kid from them.
+      // If a task ends up with no kids, drop it.
+      const tasks = s.tasks.map(t => {
+        if (t.sectionName !== sec.name) return t;
+        if (!(t.kidIds || []).includes(selectedKidId)) return t;
+        return { ...t, kidIds: (t.kidIds || []).filter(id => id !== selectedKidId) };
+      }).filter(t => (t.kidIds || []).length > 0);
+      return { ...s, kids, tasks };
+    });
+    cancel();
+  };
+
+  const renderForm = (isEdit) => (
+    <div style={{ background: C.card, borderRadius: '18px', padding: '16px', marginBottom: '10px', boxShadow: `0 3px 0 ${C.border}` }}>
+      <div style={{ fontSize: '0.8rem', color: C.textSoft, fontWeight: 700, marginBottom: '6px' }}>Section name</div>
+      <input value={secName} onChange={e => setSecName(e.target.value)} placeholder="e.g. After school" style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '10px', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+      <div style={{ fontSize: '0.8rem', color: C.textSoft, fontWeight: 700, marginBottom: '6px' }}>Icon (emoji)</div>
+      <input value={secIcon} onChange={e => setSecIcon(e.target.value)} placeholder="✨" style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `2px solid ${C.border}`, fontSize: '1rem', marginBottom: '14px', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+      {isEdit && confirmDelete ? (
+        <div style={{ background: '#FFE5E5', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+          <div style={{ fontWeight: 700, color: C.text, marginBottom: '10px', fontSize: '0.9rem' }}>Remove this section from {kid.name}? Tasks only for {kid.name} in this section will be removed too.</div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={deleteSection} style={{ flex: 1, background: '#E04E6D', color: '#fff', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}>Yes, remove</button>
+            <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, background: '#EEE', border: 'none', padding: '10px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}>Keep</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={saveSection} style={{ flex: 1, background: C.primary, color: '#fff', border: 'none', padding: '12px', borderRadius: '14px', fontWeight: 800, cursor: 'pointer' }}>{isEdit ? 'Save' : 'Add section'}</button>
+          {isEdit && <button onClick={() => setConfirmDelete(true)} style={{ background: '#FFE5E5', color: '#E04E6D', border: 'none', padding: '12px 14px', borderRadius: '14px', fontWeight: 800, cursor: 'pointer' }}>Delete</button>}
+          <button onClick={cancel} style={{ background: '#EEE', border: 'none', padding: '12px 14px', borderRadius: '14px', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ fontSize: '0.8rem', color: C.textSoft, fontWeight: 700, marginBottom: '6px' }}>Choose a kid</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
+        {state.kids.map(k => (
+          <button
+            key={k.id}
+            onClick={() => { setSelectedKidId(k.id); cancel(); }}
+            style={{ padding: '6px 12px', borderRadius: '999px', border: 'none', background: selectedKidId === k.id ? k.color : C.bgSoft, color: selectedKidId === k.id ? '#fff' : C.text, fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem' }}
+          >
+            {k.avatar} {k.name}
+          </button>
+        ))}
+      </div>
+
+      {sections.map(sec => mode.type === 'edit' && mode.id === sec.id ? (
+        <React.Fragment key={sec.id}>{renderForm(true)}</React.Fragment>
+      ) : (
+        <button
+          key={sec.id}
+          onClick={() => startEdit(sec)}
+          style={{ background: C.card, borderRadius: '14px', padding: '12px 14px', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', boxShadow: `0 2px 0 ${C.border}` }}
+        >
+          <div style={{ fontSize: '1.5rem' }}>{sec.icon || '✨'}</div>
+          <div style={{ flex: 1, fontWeight: 700, color: C.text }}>{sec.name}</div>
+          <div style={{ color: C.textSoft, fontSize: '0.7rem', fontWeight: 700 }}>tap to edit</div>
+        </button>
+      ))}
+
+      {mode.type === 'add' ? (
+        renderForm(false)
+      ) : (
+        <button onClick={startAdd} style={{ width: '100%', background: 'transparent', border: `3px dashed ${C.textSoft}`, borderRadius: '18px', padding: '16px', color: C.text, fontFamily: 'Fredoka, sans-serif', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '8px' }}>
+          <Plus size={20} /> Add section for {kid.name}
         </button>
       )}
     </div>
@@ -1334,7 +1574,8 @@ function MainApp({ firebaseUser, onSignOut }) {
       } else {
         const remote = snap.data().state;
         if (remote) {
-          setState(prev => JSON.stringify(prev) === JSON.stringify(remote) ? prev : remote);
+          const migrated = migrateState(JSON.parse(JSON.stringify(remote)));
+          setState(prev => JSON.stringify(prev) === JSON.stringify(migrated) ? prev : migrated);
         }
       }
       setLoaded(true);
